@@ -44,3 +44,9 @@ Windows 11, python 3.12.7
 | bench | rustiter | builtin |
 | ----- | -------- | ------- |
 | 1     | 0.21076  | 0.06355 |
+
+NixOS, python 3.12.6
+
+| bench | rustiter | builtin |
+| ----- | -------- | ------- |
+| 1     | 0.03765  | 0.01199 |
