@@ -1,0 +1,10 @@
+[project]
+name = "rustiter"
+version = "0.1.0"
+description = "Rust iterator utilities for Python"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = ["pytest>=7.0.1"]
