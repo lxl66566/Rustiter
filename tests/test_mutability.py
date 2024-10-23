@@ -1,4 +1,4 @@
-from src import rter
+from rustiter import rter
 
 
 class Counter:

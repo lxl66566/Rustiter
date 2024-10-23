@@ -1,6 +1,6 @@
 from timeit import timeit
 
-from src import rter
+from rustiter import rter
 
 print("benchmark 1")
 

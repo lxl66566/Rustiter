@@ -1,4 +1,4 @@
-from src import rter
+from rustiter import rter
 
 
 def test_basic():
@@ -14,4 +14,3 @@ def test_basic():
     )
     assert ret == [1, 3, 5]
     assert rter(range(10)).reduce(lambda x, y: x + y, 0) == 45
-
