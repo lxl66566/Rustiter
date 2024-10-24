@@ -35,6 +35,14 @@ assert rter(range(10)).reduce(lambda x, y: x + y, 0) == 45
 
 Additional Information: **Every function** includes a doctest to demonstrate its usage.
 
+### Mutability
+
+The mutability of Python's iterator is not ideal. Therefore, I marked the mutability of the functions as follows:
+
+- `[Mut]`: The iterator may be modified after this operation. If there's not a `retains = ...`, the rest elements is undefined.
+- `[UnMut]`: The iterator will not be modified.
+- `[Consume]`: The iterator may be consumed after this operation. Note that this **does not** mean the iterator will become empty; there may still be elements in it. This means that you should not use this iterator again.
+
 ## benchmark
 
 Each data is in seconds. You can run [bench.py](./bench.py) manually.

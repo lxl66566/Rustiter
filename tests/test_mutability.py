@@ -1,23 +1,116 @@
 from rustiter import rter
 
 
-class Counter:
-    def __init__(self, x=0) -> None:
-        self.c = x
-
-    def add(self):
-        self.c += 1
+def test_all_mut():
+    a = rter([1, 2, 3])
+    _ = a.all(lambda x: x > 2)
+    assert a.ne(rter([1, 2, 3]))
 
 
-def test_shallow_clone():
-    a = rter([Counter(3)])
-    clone = a.clone()
-    next(clone).add()
-    assert next(a).c == 4  # The rter clone points to the same element.
+def test_any_mut():
+    a = rter([1, 2, 3])
+    _ = a.any(lambda x: x > 2)
+    assert a.ne(rter([1, 2, 3]))
 
 
-def test_deep_copy():
-    a = rter([Counter(3)])
-    clone = a.deepcopy()
-    next(clone).add()
-    assert next(a).c == 3  # The rter deepcopy points to the different element.
+def test_clone_unmut():
+    a = rter([1, 2, 3])
+    _ = a.clone().collect()
+    assert a.eq(rter([1, 2, 3]))
+
+
+def test_cloned_unmut():
+    a = rter([1, 2, 3])
+    _ = a.cloned().collect()
+    assert a.eq(rter([1, 2, 3]))
+
+
+def test_enumerate_consume():
+    a = rter([1, 2, 3])
+    _ = a.enumerate().collect()
+    assert a.is_empty()
+
+
+def test_filter_consume():
+    a = rter([1, 2, 3])
+    _ = a.filter(lambda x: x > 2).collect()
+    assert a.is_empty()
+
+
+def test_fuse_mut():
+    a = rter([1, 2, None, 3, 4])
+    _ = a.fuse().collect()
+    assert a.eq(rter([3, 4]))
+
+
+def test_intersperse_consume():
+    a = rter([1, 2, 3, 4])
+    _ = a.intersperse(0).collect()
+    assert a.is_empty()
+
+
+def test_is_empty_unmut():
+    a = rter([1, 2, 3])
+    _ = a.is_empty()
+    assert a.eq(rter([1, 2, 3]))
+
+
+def test_is_partitioned_unmut():
+    a = rter([1, 2, 3])
+    _ = a.is_partitioned(lambda x: x <= 1)
+    assert a.is_empty()
+
+
+def test_map_consume():
+    a = rter([1, 2, 3, 4])
+    _ = a.map(lambda x: x * 2).collect()
+    assert a.is_empty()
+
+
+def test_next_mut():
+    a = rter([1, 2, 3])
+    _ = a.next()
+    assert a.eq(rter([2, 3]))
+
+
+def test_nth_mut():
+    a = rter([1, 2, 3])
+    _ = a.nth(1)
+    assert a.eq(rter([3]))
+
+
+def test_position_mut():
+    a = rter([1, 2, 3])
+    _ = a.position(lambda x: x == 1)
+    assert a.eq(rter([2, 3]))
+
+
+def test_sorted_consume():
+    a = rter([1, 3, 2])
+    _ = a.sorted().collect()
+    assert a.is_empty()
+
+
+def test_skip_consume():
+    a = rter([1, 2, 3])
+    _ = a.skip(1).collect()
+    assert a.is_empty()
+
+
+def test_skip_while_consume():
+    a = rter([1, 2, 3])
+    _ = a.skip_while(lambda x: x < 2).collect()
+    assert a.is_empty()
+
+
+def test_take_mut():
+    a = rter([1, 2, 3, 4])
+    _ = a.take(2).collect()
+    assert a.eq(rter([3, 4]))
+
+
+def test_compares_unmut():
+    for func in [rter.ne, rter.eq, rter.lt, rter.le, rter.gt, rter.ge]:
+        a = rter([1, 2, 3])
+        _ = func(a, rter([1, 2, 3]))
+        assert a.eq(rter([1, 2, 3]))
