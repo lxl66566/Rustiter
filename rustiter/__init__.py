@@ -12,6 +12,7 @@ from typing import (
     Iterator,
     Optional,
     TypeVar,
+    Union,
 )
 
 T = TypeVar("T")
@@ -109,11 +110,11 @@ class IterableWrapper(Generic[T]):
         """
         return IterableWrapper(deepcopy(self.iterator))
 
-    def collect(self, container: type = list):
+    def collect(self, container: Union[Callable[[Iterable[Any]], Any], type] = list):
         """
         [Consume]
 
-        collects the iterator into a container, a list by default.
+        Collects the iterator into a container (a list by default), or any function that receives an iterator as an argument.
 
         >>> rter([1, 2, 3]).collect()
         [1, 2, 3]
@@ -121,6 +122,8 @@ class IterableWrapper(Generic[T]):
         {1, 2, 3}
         >>> rter([(1, 2), (3, 4)]).collect(dict)
         {1: 2, 3: 4}
+        >>> rter(["h", "e", "l", "l", "o"]).collect("".join)
+        'hello'
         """
         return container(self.iterator)
 
