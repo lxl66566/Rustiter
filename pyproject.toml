@@ -21,7 +21,10 @@ requires-python = ">=3.6"
 version = "0.2.0"
 
 [tool.uv]
-dev-dependencies = ["pytest>=7.0.1"]
+dev-dependencies = [
+    "pytest-benchmark>=3.4.1",
+    "pytest>=7.0.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/lxl66566/Rustiter"

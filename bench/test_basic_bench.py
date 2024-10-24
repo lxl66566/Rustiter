@@ -1,8 +1,6 @@
-from timeit import timeit
+import pytest
 
 from rustiter import rter
-
-print("benchmark 1")
 
 
 def rustiter():
@@ -17,5 +15,11 @@ def normal():
     return temp
 
 
-print("rter: ", timeit("rustiter()", globals=globals(), number=10000))
-print("normal: ", timeit("normal()", globals=globals(), number=10000))
+@pytest.mark.benchmark
+def test_rustiter(benchmark):
+    benchmark(rustiter)
+
+
+@pytest.mark.benchmark
+def test_normal(benchmark):
+    benchmark(normal)

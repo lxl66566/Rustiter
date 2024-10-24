@@ -45,16 +45,9 @@ The mutability of Python's iterator is not ideal. Therefore, I marked the mutabi
 
 ## benchmark
 
-Each data is in seconds. You can run [bench.py](./bench.py) manually.
-
 Windows 11, python 3.12.7
 
-| bench | rustiter | builtin |
-| ----- | -------- | ------- |
-| 1     | 0.21076  | 0.06355 |
-
-NixOS, python 3.12.6
-
-| bench | rustiter | builtin |
-| ----- | -------- | ------- |
-| 1     | 0.03765  | 0.01199 |
+| Name (time in ns) | Min               | Max                 | Mean              | StdDev             | Median            | IQR             | Outliers   | OPS (Kops/s)     | Rounds | Iterations |
+| ----------------- | ----------------- | ------------------- | ----------------- | ------------------ | ----------------- | --------------- | ---------- | ---------------- | ------ | ---------- |
+| test_normal       | 524.9999 (1.0)    | 26,137.4998 (1.0)   | 600.2414 (1.0)    | 247.7502 (1.0)     | 575.0001 (1.0)    | 37.5001 (1.0)   | 2947;10025 | 1,665.9964 (1.0) | 169492 | 8          |
+| test_rustiter     | 1,399.9997 (2.67) | 251,400.0007 (9.62) | 1,669.7782 (2.78) | 2,722.4341 (10.99) | 1,599.9995 (2.78) | 100.0008 (2.67) | 107;1465   | 598.8819 (0.36)  | 31646  | 1          |
