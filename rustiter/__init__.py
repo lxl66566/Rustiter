@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 import itertools
-from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
 from itertools import islice
@@ -9,7 +6,9 @@ from typing import (
     Any,
     Callable,
     Generic,
+    Iterable,
     Iterator,
+    List,
     Optional,
     TypeVar,
     Union,
@@ -572,7 +571,7 @@ class IterableWrapper(Generic[T]):
 
         return IterableWrapper(inner())
 
-    def map_windows(self, n, func: Callable[[list[T]], U]):
+    def map_windows(self, n, func: Callable[[List[T]], U]):
         """
         [Consume]
 
