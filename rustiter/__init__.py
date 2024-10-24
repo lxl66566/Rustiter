@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 from collections.abc import Iterable
 from copy import deepcopy
@@ -9,7 +11,6 @@ from typing import (
     Generic,
     Iterator,
     Optional,
-    TypeAlias,
     TypeVar,
 )
 
@@ -1015,7 +1016,7 @@ class IterableWrapper(Generic[T]):
         return self._compare(other) >= 0
 
 
-rter: TypeAlias = IterableWrapper
+rter = IterableWrapper
 
 if __name__ == "__main__":
     import doctest
