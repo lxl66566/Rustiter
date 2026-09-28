@@ -1,9 +1,10 @@
+import heapq
 import itertools
 import math
 from collections import deque
 from collections.abc import Iterable as ABCIterable
 from copy import deepcopy
-from functools import reduce
+from functools import cmp_to_key, reduce
 from itertools import islice
 from operator import length_hint
 from typing import (
@@ -143,6 +144,22 @@ class IterableWrapper(Generic[T]):
         [1, 2, 3, 4, 5, 6]
         """
         return IterableWrapper(itertools.chain(self.iterator, *iterables))
+
+    def chunk_by(self, key: Callable[[T], Any]) -> "IterableWrapper[List[T]]":
+        """
+        [Consume]
+
+        Groups consecutive elements sharing the same key into lists.
+
+        Unlike a full grouping, non-adjacent elements with the same key are not merged.
+        Each chunk is materialized, but the chunks themselves are produced lazily.
+
+        >>> rter([1, 1, 2, 2, 1]).chunk_by(lambda x: x).collect()
+        [[1, 1], [2, 2], [1]]
+        >>> rter(["apple", "avocado", "banana", "cherry"]).chunk_by(lambda s: s[0]).collect()
+        [['apple', 'avocado'], ['banana'], ['cherry']]
+        """
+        return IterableWrapper(list(g) for _, g in itertools.groupby(self.iterator, key))
 
     def cmp(self, other) -> int:
         """
@@ -787,6 +804,42 @@ class IterableWrapper(Generic[T]):
                 yield func(list(window))
 
         return IterableWrapper(inner())
+
+    def merge(self, other: Iterable[Any]) -> "IterableWrapper[Any]":
+        """
+        [Consume]
+
+        Merges two sorted iterators into a single sorted iterator (heapq.merge).
+
+        >>> rter([1, 3, 5]).merge(rter([2, 4, 6])).collect()
+        [1, 2, 3, 4, 5, 6]
+        >>> rter([1, 2]).merge([3, 4]).collect()
+        [1, 2, 3, 4]
+        """
+        return IterableWrapper(heapq.merge(self.iterator, other))
+
+    def merge_by(self, other: Iterable[Any], less: Callable[[T, T], bool]) -> "IterableWrapper[Any]":
+        """
+        [Consume]
+
+        Merges two iterators sorted by the given comparison into a single iterator.
+
+        `less(a, b)` returns True when `a` should be placed before `b`.
+
+        >>> rter([5, 3, 1]).merge_by(rter([6, 4, 2]), lambda a, b: a > b).collect()
+        [6, 5, 4, 3, 2, 1]
+        >>> rter([1, 3]).merge_by(rter([2]), lambda a, b: a < b).collect()
+        [1, 2, 3]
+        """
+
+        def cmp(a, b):
+            if less(a, b):
+                return -1
+            if less(b, a):
+                return 1
+            return 0
+
+        return IterableWrapper(heapq.merge(self.iterator, other, key=cmp_to_key(cmp)))
 
     def max(self):
         """
@@ -1549,6 +1602,19 @@ class IterableWrapper(Generic[T]):
             except catch as e:
                 return e
         return acc
+
+    def unique(self) -> "IterableWrapper[T]":
+        """
+        [Consume]
+
+        Removes duplicate elements, keeping the first occurrence of each.
+
+        >>> rter([1, 2, 1, 3, 2]).unique().collect()
+        [1, 2, 3]
+        >>> rter("hello").unique().collect()
+        ['h', 'e', 'l', 'o']
+        """
+        return IterableWrapper(dict.fromkeys(self.iterator))
 
     def unzip(self):
         """
