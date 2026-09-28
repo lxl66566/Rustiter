@@ -1069,8 +1069,14 @@ class IterableWrapper(Generic[T]):
     def __next__(self):
         return next(self.iterator)
 
-    def __len__(self):
-        return self.count()
+    def __repr__(self):
+        """
+        >>> rter([1, 2])
+        <rter list_iterator>
+        >>> rter(x for x in [1, 2])
+        <rter generator>
+        """
+        return f"<rter {type(self.iterator).__name__}>"
 
     def _compare(self, other: Any):
         """
