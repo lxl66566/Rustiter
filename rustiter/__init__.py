@@ -73,9 +73,9 @@ class IterableWrapper(Generic[T]):
 
         Returns True if any element in the iterator satisfies the predicate.
 
-        >>> rter([1, 2, 3]).all(lambda x: x > 0)
+        >>> rter([1, 2, 3]).any(lambda x: x > 0)
         True
-        >>> rter([1, 2, 3]).all(lambda x: x > 5)
+        >>> rter([1, 2, 3]).any(lambda x: x > 5)
         False
         """
         return any(self.map(predicate))
@@ -173,6 +173,9 @@ class IterableWrapper(Generic[T]):
     def empty():
         """
         Returns an empty rter
+
+        >>> rter.empty().collect()
+        []
         """
         return IterableWrapper([])
 
@@ -253,7 +256,7 @@ class IterableWrapper(Generic[T]):
 
     def find(self, predicate):
         """
-        [Mut ; retains = the rest elements after the finded one]
+        [Mut ; retains = the rest elements after the found one]
 
         Returns the first element in the iterable that satisfies the given predicate.
         Returns None if no such element is found.
@@ -319,6 +322,13 @@ class IterableWrapper(Generic[T]):
     def fold(self, func, initial=_SENTINEL):
         """
         alias of `reduce`
+
+        >>> rter([1, 2, 3]).fold(lambda x, y: x + y)
+        6
+        >>> rter([1, 2, 3]).fold(lambda x, y: x + y, 10)
+        16
+        >>> rter([]).fold(lambda x, y: x + y) is None
+        True
         """
         return self.reduce(func, initial)
 
@@ -513,6 +523,11 @@ class IterableWrapper(Generic[T]):
         [Consume]
 
         Checks if the elements of this iterator are sorted using the given comparator function.
+
+        >>> rter([1, 2, 3]).is_sorted_by(lambda x, y: x <= y)
+        True
+        >>> rter([3, 1, 2]).is_sorted_by(lambda x, y: x <= y)
+        False
         """
         it1, it2 = itertools.tee(self.iterator)
         next(it2, None)
@@ -733,6 +748,9 @@ class IterableWrapper(Generic[T]):
     def once(x: T):
         """
         Returns an iterator of exactly one element.
+
+        >>> rter.once(1).collect()
+        [1]
         """
         return IterableWrapper(iter([x]))
 
