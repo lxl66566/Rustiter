@@ -199,6 +199,14 @@ class IterableWrapper(Generic[T]):
         True
         >>> rter([1, 2]).eq(rter([1]))
         False
+        >>> rter([None, 1]).eq(rter([None]))
+        False
+        >>> rter([1, None]).eq(rter([1]))
+        False
+        >>> rter([1, 2]) == [1, 2]
+        True
+        >>> rter([1]) == 5
+        False
         """
         return self == other
 
@@ -907,18 +915,17 @@ class IterableWrapper(Generic[T]):
 
         >>> rter([1, 2, 3, 4, 5]).skip_while(lambda x: x < 3).collect()
         [3, 4, 5]
+        >>> rter([None, 2]).skip_while(lambda x: False).collect()
+        [None, 2]
         """
-        n = None
         try:
             n = next(self.iterator)
             while predicate(n):
                 n = next(self.iterator)
         except StopIteration:
             return IterableWrapper.empty()
-        if n is not None:
-            return IterableWrapper.once(n).chain(self)
-        else:
-            return IterableWrapper([])
+        # n survived StopIteration, so it is a real element (possibly None).
+        return IterableWrapper.once(n).chain(self)
 
     def sorted(self, key=None, reverse=False):
         """
@@ -1042,40 +1049,60 @@ class IterableWrapper(Generic[T]):
     def __len__(self):
         return self.count()
 
-    def _compare(self, other: "IterableWrapper[T]"):
+    def _compare(self, other: Any):
         """
         [UnMut]
 
         Helper function to compare two iterators lexicographically.
 
+        Accepts any iterable (wrapped on the fly) and returns NotImplemented
+        for non-iterables.
+
         returns 1 if a > b, -1 if a < b, 0 if equal
         """
         if not isinstance(other, IterableWrapper):
-            return NotImplemented
+            if not isinstance(other, Iterable):
+                return NotImplemented
+            other = IterableWrapper(other)
 
         x, y = self.clone(), other.clone()
 
         while True:
-            a, b = x.next(), y.next()
-            if a is None or b is None:
-                return (b is None) - (a is None)
+            a, b = next(x, _SENTINEL), next(y, _SENTINEL)
+            if a is _SENTINEL or b is _SENTINEL:
+                return (b is _SENTINEL) - (a is _SENTINEL)
             if a != b:
                 return (a > b) - (a < b)  # type: ignore
 
     def __eq__(self, other):
-        return self._compare(other) == 0
+        c = self._compare(other)
+        if c is NotImplemented:
+            return NotImplemented
+        return c == 0
 
     def __lt__(self, other):
-        return self._compare(other) < 0
+        c = self._compare(other)
+        if c is NotImplemented:
+            return NotImplemented
+        return c < 0
 
     def __le__(self, other):
-        return self._compare(other) <= 0
+        c = self._compare(other)
+        if c is NotImplemented:
+            return NotImplemented
+        return c <= 0
 
     def __gt__(self, other):
-        return self._compare(other) > 0
+        c = self._compare(other)
+        if c is NotImplemented:
+            return NotImplemented
+        return c > 0
 
     def __ge__(self, other):
-        return self._compare(other) >= 0
+        c = self._compare(other)
+        if c is NotImplemented:
+            return NotImplemented
+        return c >= 0
 
 
 rter = IterableWrapper

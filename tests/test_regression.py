@@ -39,3 +39,21 @@ def test_inspect_works_on_generator_chains():
     ret = rter(x for x in [1, 2, 3]).map(lambda x: x + 1).inspect(seen.append).collect()
     assert ret == [2, 3, 4]
     assert seen == [2, 3, 4]
+
+
+def test_compare_handles_none_elements():
+    # P1-2: None was used both as an element and as the exhaustion sentinel
+    assert rter([None, 1]).eq(rter([None])) is False
+    assert rter([1, None]).eq(rter([1])) is False
+
+
+def test_skip_while_keeps_none_elements():
+    # P1-3: a leading None was misread as exhaustion
+    assert rter([None, 2]).skip_while(lambda x: False).collect() == [None, 2]
+
+
+def test_compare_accepts_plain_iterables():
+    # P2-4: comparisons rejected non-IterableWrapper operands
+    assert rter([1, 2]) == [1, 2]
+    assert not (rter([1]) == 5)
+    assert rter([1, 2]) < [1, 3]
