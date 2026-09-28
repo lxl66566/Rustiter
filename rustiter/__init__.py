@@ -629,20 +629,32 @@ class IterableWrapper(Generic[T]):
 
         Calls the given function f for each contiguous window of size N over self and returns an iterator over the outputs of f.
 
+        Yields nothing if the iterator has fewer than n elements. n must be at least 1 (Rust panics on n == 0; this library raises ValueError, same policy as step_by).
+
         Example:
         >>> rter(['a', 'b', 'c', 'd']).map_windows(2, lambda x: ''.join(x)).collect()
         ['ab', 'bc', 'cd']
         >>> rter([1, 2, 3, 4, 5]).map_windows(3, lambda x: sum(x)).collect()
         [6, 9, 12]
+        >>> rter([1, 2]).map_windows(3, sum).collect()
+        []
+        >>> rter([1, 2]).map_windows(0, sum)
+        Traceback (most recent call last):
+            ...
+        ValueError: map_windows() requires n >= 1
         """
+        if n < 1:
+            raise ValueError("map_windows() requires n >= 1")
 
         def inner():
-            window = []
-            for item in self.iterator:
+            it = iter(self.iterator)
+            window = deque(islice(it, n), maxlen=n)
+            if len(window) < n:
+                return
+            yield func(list(window))
+            for item in it:
                 window.append(item)
-                if len(window) == n:
-                    yield func(window.copy())
-                    window.pop(0)
+                yield func(list(window))
 
         return IterableWrapper(inner())
 
