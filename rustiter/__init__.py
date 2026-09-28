@@ -13,12 +13,14 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     TypeVar,
     Union,
 )
 
 T = TypeVar("T")
 U = TypeVar("U")
+S = TypeVar("S")
 
 # Module-level sentinel distinguishing "argument not given" from an explicit None.
 _SENTINEL = object()
@@ -843,7 +845,30 @@ class IterableWrapper(Generic[T]):
         self.iterator = itertools.chain(l, r)
         return size
 
-    # def peekable(self):
+    def peekable(self) -> "Peekable[T]":
+        """
+        [Consume]
+
+        Turns the iterator into a peekable one, adding a peek() method with single-element lookahead.
+
+        peek() does not consume the peeked element; the iteration order is unaffected by peeking.
+
+        >>> a = rter([1, 2, 3]).peekable()
+        >>> a.peek()
+        1
+        >>> a.peek()
+        1
+        >>> a.collect()
+        [1, 2, 3]
+        >>> b = rter([]).peekable()
+        >>> print(b.peek())
+        None
+        >>> b.peek(-1)
+        -1
+        >>> list(b)
+        []
+        """
+        return Peekable(self.iterator)
 
     def position(self, predicate: Callable[[T], bool]):
         """
@@ -951,7 +976,32 @@ class IterableWrapper(Generic[T]):
         else:
             return IterableWrapper(itertools.repeat(x, times))
 
-    # def scan(self, func, initial=None):
+    def scan(self, initial: S, func: Callable[[S, T], Optional[Tuple[S, U]]]) -> "IterableWrapper[U]":
+        """
+        [Consume]
+
+        A fold-like adapter that holds internal state and yields items derived from it.
+
+        `func(state, x)` is called with the current state and each element x.
+        If it returns a `(new_state, item)` tuple, `item` is yielded and iteration
+        continues with `new_state`; if it returns None, the iteration terminates early.
+
+        >>> rter([1, 2, 3, 4]).scan(0, lambda s, x: (s + x, s + x)).collect()
+        [1, 3, 6, 10]
+        >>> rter([1, 2, 3, 4]).scan(0, lambda s, x: None if s + x > 3 else (s + x, s + x)).collect()
+        [1, 3]
+        """
+
+        def inner():
+            state = initial
+            for item in self.iterator:
+                result = func(state, item)
+                if result is None:
+                    return
+                state, value = result
+                yield value
+
+        return IterableWrapper(inner())
     # def size_hint(self):
 
     def skip(self, n):
@@ -1172,6 +1222,54 @@ class IterableWrapper(Generic[T]):
         if c is NotImplemented:
             return NotImplemented
         return c >= 0
+
+
+class Peekable(IterableWrapper[T]):
+    """
+    An IterableWrapper with single-element lookahead.
+
+    peek() returns the next element without consuming it, so the iteration
+    order is unaffected by peeking.
+    """
+
+    __slots__ = ("_buffer",)
+
+    def __init__(self, iterable: Iterable[T]):
+        self._buffer: List[T] = []
+        super().__init__(self._stream(iter(iterable)))
+
+    def _stream(self, source: Iterator[T]) -> Iterator[T]:
+        while True:
+            if self._buffer:
+                yield self._buffer.pop(0)
+            else:
+                try:
+                    yield next(source)
+                except StopIteration:
+                    return
+
+    def peek(self, default=None) -> Optional[T]:
+        """
+        [UnMut]
+
+        Returns the next element without consuming it.
+
+        If the iterator is exhausted, returns default and consumes nothing.
+
+        >>> a = rter([1, 2]).peekable()
+        >>> a.peek()
+        1
+        >>> a.next()
+        1
+        >>> a.peek()
+        2
+        """
+        if not self._buffer:
+            try:
+                self._buffer.append(next(self.iterator))
+            except StopIteration:
+                return default
+        return self._buffer[0]
 
 
 rter = IterableWrapper
