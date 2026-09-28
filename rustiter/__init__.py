@@ -66,6 +66,31 @@ class IterableWrapper(Generic[T]):
         except StopIteration:
             return n
 
+    def advance_back_by(self, n: int):
+        """
+        [Consume]
+
+        Advances the iterator by n elements from the end.
+
+        Returns None on success, or the number k of remaining steps that could not be
+        advanced because the iterator ran out, mirroring `advance_by`.
+
+        Python iterators cannot go backwards, so the iterator is materialized first;
+        the elements before the skipped ones are kept in self.
+
+        >>> a = rter([1, 2, 3, 4])
+        >>> a.advance_back_by(2)
+        >>> a.collect()
+        [1, 2]
+        >>> rter([1]).advance_back_by(3)
+        2
+        """
+        items = list(self.iterator)
+        if n > len(items):
+            self.iterator = iter([])
+            return n - len(items)
+        self.iterator = iter(items[: len(items) - n])
+
     def all(self, predicate: Callable[[T], bool]):
         """
         [Mut]
@@ -936,6 +961,34 @@ class IterableWrapper(Generic[T]):
         """
         return next(islice(self.iterator, n, n + 1), None)
 
+    def nth_back(self, n: int) -> Optional[T]:
+        """
+        [Consume]
+
+        Returns the nth element from the end of the iterator, advancing the iterator past it.
+
+        Returns None if the iterator has fewer than n + 1 elements, in which case the
+        remaining elements are kept in self.
+
+        Python iterators cannot go backwards, so the iterator is materialized first;
+        the elements before the taken one are kept in self.
+
+        >>> a = rter([1, 2, 3, 4])
+        >>> a.nth_back(1)
+        3
+        >>> a.collect()
+        [1, 2]
+        >>> rter([1, 2]).nth_back(5) is None
+        True
+        """
+        items = list(self.iterator)
+        if n < 0 or n >= len(items):
+            self.iterator = iter(items)
+            return None
+        value = items[len(items) - 1 - n]
+        self.iterator = iter(items[: len(items) - 1 - n])
+        return value
+
     @staticmethod
     def once(x: T):
         """
@@ -1152,6 +1205,49 @@ class IterableWrapper(Generic[T]):
         except TypeError:
             self.iterator = reversed(list(self.iterator))
         return self
+
+    def rfind(self, predicate: Callable[[T], bool]) -> Optional[T]:
+        """
+        [Consume]
+
+        Searches for an element from the end, returning it.
+
+        Returns None if no element satisfies the predicate, in which case self is
+        left empty. Python iterators cannot go backwards, so the iterator is
+        materialized first; the elements before the found one are kept in self.
+
+        >>> a = rter([1, 2, 3, 4])
+        >>> a.rfind(lambda x: x % 2 == 0)
+        4
+        >>> a.collect()
+        [1, 2, 3]
+        >>> rter([1, 3]).rfind(lambda x: x % 2 == 0) is None
+        True
+        """
+        items = list(self.iterator)
+        for i in range(len(items) - 1, -1, -1):
+            if predicate(items[i]):
+                self.iterator = iter(items[:i])
+                return items[i]
+        return None
+
+    def rfold(self, func: Callable[[Any, T], Any], initial):
+        """
+        [Consume]
+
+        Folds the elements from the end, by repeatedly applying a reducing operation.
+
+        Python iterators cannot go backwards, so the iterator is materialized first.
+
+        >>> rter(["a", "b", "c"]).rfold(lambda acc, x: acc + x, "")
+        'cba'
+        >>> rter([]).rfold(lambda acc, x: acc + x, 0)
+        0
+        """
+        acc = initial
+        for item in reversed(list(self.iterator)):
+            acc = func(acc, item)
+        return acc
 
     def rposition(self, predicate):
         """
@@ -1611,6 +1707,86 @@ class Peekable(IterableWrapper[T]):
 
 
 rter = IterableWrapper
+
+
+def from_fn(func: Callable[[], Optional[T]]) -> IterableWrapper[T]:
+    """
+    Creates a new iterator where each element is produced by calling func.
+
+    Iteration stops when func returns None.
+
+    >>> counter = iter(range(3))
+    >>> from_fn(lambda: next(counter, None)).collect()
+    [0, 1, 2]
+    >>> from_fn(lambda: None).collect()
+    []
+    """
+
+    def inner():
+        while True:
+            item = func()
+            if item is None:
+                return
+            yield item
+
+    return IterableWrapper(inner())
+
+
+def once_with(func: Callable[[], T]) -> IterableWrapper[T]:
+    """
+    Lazily produces exactly one value by calling func.
+
+    func is called only when the value is first requested.
+
+    >>> calls = []
+    >>> it = once_with(lambda: calls.append(1) or "value")
+    >>> len(calls)
+    0
+    >>> it.collect()
+    ['value']
+    >>> len(calls)
+    1
+    """
+
+    def inner():
+        yield func()
+
+    return IterableWrapper(inner())
+
+
+def repeat_n(x: T, n: int) -> IterableWrapper[T]:
+    """
+    Creates an iterator that repeats x exactly n times.
+
+    Alias of `repeat`, named after Rust 1.82 `std::iter::repeat_n`.
+
+    >>> repeat_n(2, 3).collect()
+    [2, 2, 2]
+    """
+    return IterableWrapper.repeat(x, n)
+
+
+def successors(initial: Optional[T], succ: Callable[[T], Optional[T]]) -> IterableWrapper[T]:
+    """
+    Creates a new iterator that yields initial and then elements generated by succ.
+
+    succ(x) returns the next element, or None to stop the iteration.
+
+    >>> successors(3, lambda x: x - 1 if x > 0 else None).collect()
+    [3, 2, 1, 0]
+    >>> successors(None, lambda x: x).collect()
+    []
+    >>> successors((0, 1), lambda p: (p[1], p[0] + p[1])).map(lambda p: p[0]).take(8).collect()
+    [0, 1, 1, 2, 3, 5, 8, 13]
+    """
+
+    def inner():
+        current = initial
+        while current is not None:
+            yield current
+            current = succ(current)
+
+    return IterableWrapper(inner())
 
 if __name__ == "__main__":
     import doctest
