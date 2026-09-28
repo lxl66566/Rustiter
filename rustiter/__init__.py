@@ -539,12 +539,12 @@ class IterableWrapper(Generic[T]):
 
         Checks if the elements of this iterator are sorted using the given key extraction function.
 
-        Instead of comparing the iterator’s elements directly, this function compares the keys of the elements, as determined by f.
+        Instead of comparing the iterator’s elements directly, this function compares the keys of the elements, as determined by f. Each key is computed exactly once.
 
         >>> rter(["aaa", "ccc", "bbbbb"]).is_sorted_by_key(len)
         True
         """
-        return self.is_sorted_by(lambda x, y: f(x) <= f(y))
+        return self.map(f).is_sorted()
 
     def last(self) -> Optional[T]:
         """
