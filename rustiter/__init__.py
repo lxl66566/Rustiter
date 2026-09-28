@@ -1,6 +1,7 @@
 import itertools
 import math
 from collections import deque
+from collections.abc import Iterable as ABCIterable
 from copy import deepcopy
 from functools import reduce
 from itertools import islice
@@ -24,9 +25,9 @@ _SENTINEL = object()
 
 
 class IterableWrapper(Generic[T]):
+    __slots__ = ("iterator",)
+
     def __init__(self, iterable: Iterable[T]):
-        if not isinstance(iterable, Iterable):
-            raise TypeError("Object must be iterable")
         self.iterator: Iterator[T] = iter(iterable)
 
     def advance_by(self, n: int):
@@ -315,7 +316,7 @@ class IterableWrapper(Generic[T]):
         """
         return IterableWrapper(
             itertools.chain.from_iterable(
-                map(lambda x: x if isinstance(x, Iterable) else [x], self.iterator)
+                map(lambda x: x if isinstance(x, ABCIterable) else [x], self.iterator)
             )
         )
 
