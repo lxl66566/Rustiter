@@ -978,21 +978,20 @@ class IterableWrapper(Generic[T]):
 
     def take(self, n: int):
         """
-        [Mut ; retains = the rest elements after the first n]
+        [Consume]
 
         Take the first `n` elements from the iterable.
 
+        Returns a lazy view: the source iterator is advanced only as the view is consumed, matching Rust's lazy `take` (earlier releases eagerly drained the first `n` elements on call).
+
         >>> rter([1, 3, 2, 4]).take(3).collect()
         [1, 3, 2]
+        >>> rter([1, 2]).take(-1)
+        Traceback (most recent call last):
+            ...
+        ValueError: Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.
         """
-        ans = []
-        while n > 0:
-            try:
-                ans.append(next(self.iterator))
-            except StopIteration:
-                break
-            n -= 1
-        return IterableWrapper(ans)
+        return IterableWrapper(islice(self.iterator, n))
 
     def take_while(self, predicate: Callable[[T], bool]):
         """
