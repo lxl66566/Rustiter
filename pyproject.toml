@@ -6,8 +6,6 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.7",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
@@ -17,7 +15,7 @@ keywords = ["rust", "iter", "iterator"]
 license = "MIT"
 name = "rustiter"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 version = "0.2.0"
 
 [tool.uv]
