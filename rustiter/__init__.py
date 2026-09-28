@@ -1007,8 +1007,15 @@ class IterableWrapper(Generic[T]):
         [1, 2, 3]
         >>> list(b)
         ['a', 'b', 'c']
+        >>> rter([]).unzip()
+        ([], [])
         """
-        return zip(*self.iterator)
+        left: List[Any] = []
+        right: List[Any] = []
+        for a, b in self.iterator:
+            left.append(a)
+            right.append(b)
+        return left, right
 
     def zip(self, other: Iterable[Any]):
         """
