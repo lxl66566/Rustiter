@@ -16,3 +16,26 @@ def test_filter_map_keeps_falsy_non_none_values():
 def test_find_map_returns_falsy_first_match():
     # P0-1: find_map delegated to filter_map and skipped 0
     assert rter([0, 5]).find_map(lambda x: x) == 0
+
+
+def test_inspect_is_lazy():
+    # P0-2: func must not run until the result is consumed
+    seen = []
+    rter([1, 2, 3]).inspect(seen.append)
+    assert seen == []
+
+
+def test_inspect_passes_real_elements():
+    # P0-2: func must receive the elements themselves, not copies
+    obj = object()
+    seen = []
+    rter([obj]).inspect(seen.append).collect()
+    assert seen[0] is obj
+
+
+def test_inspect_works_on_generator_chains():
+    # P0-2: deepcopy of a generator raises TypeError
+    seen = []
+    ret = rter(x for x in [1, 2, 3]).map(lambda x: x + 1).inspect(seen.append).collect()
+    assert ret == [2, 3, 4]
+    assert seen == [2, 3, 4]

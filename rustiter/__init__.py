@@ -376,10 +376,13 @@ class IterableWrapper(Generic[T]):
 
     def inspect(self, func):
         """
-        [UnMut]
+        [Consume]
 
         Applies a function to each element of the iterable, passing the value on.
         Useful for debugging and inspecting the values in an iterator chain.
+
+        Lazy: func is only called when the returned iterator is consumed, and it
+        receives the real elements, not copies.
 
         >>> rter([1, 2, 3]).map(lambda x: x * 2).inspect(lambda x: print(f"Value: {x}")).collect()
         Value: 2
@@ -387,8 +390,13 @@ class IterableWrapper(Generic[T]):
         Value: 6
         [2, 4, 6]
         """
-        self.cloned().for_each(func)
-        return self
+
+        def inner():
+            for x in self.iterator:
+                func(x)
+                yield x
+
+        return IterableWrapper(inner())
 
     def intersperse(self, sep):
         """
