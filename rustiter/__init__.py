@@ -5,6 +5,7 @@ from collections.abc import Iterable as ABCIterable
 from copy import deepcopy
 from functools import reduce
 from itertools import islice
+from operator import length_hint
 from typing import (
     Any,
     Callable,
@@ -92,7 +93,20 @@ class IterableWrapper(Generic[T]):
         return any(self.map(predicate))
 
     # def array_chunks(self, chunk_size):
-    # def by_ref(self):
+
+    def by_ref(self):
+        """
+        [UnMut]
+
+        Returns the iterator itself.
+
+        Python iterators are already passed by reference; this method exists only for API parity with Rust.
+
+        >>> a = rter([1, 2, 3])
+        >>> a.by_ref() is a
+        True
+        """
+        return self
 
     def chain(self, *iterables: Iterable[T]):
         """
@@ -105,8 +119,49 @@ class IterableWrapper(Generic[T]):
         """
         return IterableWrapper(itertools.chain(self.iterator, *iterables))
 
-    # def cmp(self, other):
-    # def cmp_by(self, func):
+    def cmp(self, other) -> int:
+        """
+        [UnMut]
+
+        Lexicographically compares the elements of two iterators.
+
+        Returns -1, 0 or 1 as this iterator is less than, equal to, or greater than `other`.
+
+        >>> rter([1, 2, 3]).cmp(rter([1, 2, 4]))
+        -1
+        >>> rter([1, 2, 3]).cmp(rter([1, 2, 3]))
+        0
+        >>> rter([1, 2]).cmp(rter([1]))
+        1
+        """
+        if not isinstance(other, IterableWrapper):
+            other = IterableWrapper(other)
+        return self._compare(other)  # type: ignore
+
+    def cmp_by(self, other, func: Callable[[T, T], int]) -> int:
+        """
+        [UnMut]
+
+        Lexicographically compares the elements of two iterators using the given comparator.
+
+        `func(a, b)` must return -1, 0 or 1 as `a` is less than, equal to, or greater than `b`.
+
+        >>> rter([1, 2, 3]).cmp_by(rter([1, 2, 4]), lambda a, b: (a > b) - (a < b))
+        -1
+        >>> rter(["a", "b"]).cmp_by(["a", "c"], lambda a, b: (a > b) - (a < b))
+        -1
+        """
+        y = other if isinstance(other, IterableWrapper) else IterableWrapper(other)
+        x, y = self.clone(), y.clone()
+        exhausted = object()
+        while True:
+            a = next(x, exhausted)
+            b = next(y, exhausted)
+            if a is exhausted or b is exhausted:
+                return (b is exhausted) - (a is exhausted)
+            ordering = func(a, b)
+            if ordering != 0:
+                return ordering
 
     def clone(self):
         """
@@ -245,10 +300,29 @@ class IterableWrapper(Generic[T]):
         """
         return self == other
 
-    # def eq_by(self, other, f):
-    #     """
-    #     Determines if the elements of this Iterator are equal to those of another with respect to the specified equality function.
-    #     """
+    def eq_by(self, other, f: Callable[[T, T], bool]) -> bool:
+        """
+        [UnMut]
+
+        Determines if the elements of this Iterator are equal to those of another with respect to the specified equality function.
+
+        >>> rter([1, 2, 3]).eq_by(rter([1, 5, 3]), lambda a, b: a == b)
+        False
+        >>> rter([1, 2, 3]).eq_by(rter([3, 4, 7]), lambda a, b: a % 2 == b % 2)
+        True
+        >>> rter([1, 2]).eq_by(rter([1, 2, 3]), lambda a, b: True)
+        False
+        """
+        y = other if isinstance(other, IterableWrapper) else IterableWrapper(other)
+        x, y = self.clone(), y.clone()
+        exhausted = object()
+        while True:
+            a = next(x, exhausted)
+            b = next(y, exhausted)
+            if a is exhausted or b is exhausted:
+                return a is exhausted and b is exhausted
+            if not f(a, b):
+                return False
 
     def filter(self, func):
         """
@@ -702,13 +776,36 @@ class IterableWrapper(Generic[T]):
         """
         return max(self.iterator, default=None)  # type: ignore
 
-    # def max_by(self, f):
+    def max_by(self, f: Callable[[T, T], bool]):
+        """
+        [Consume]
+
+        Returns the element that gives the maximum value with respect to the specified comparison.
+
+        `f(a, b)` returns True when `a` compares greater than or equal to `b`.
+        If several elements are equally maximum, the last one is returned, matching Rust.
+
+        >>> rter([1, 2, 3, 2]).max_by(lambda a, b: a >= b)
+        3
+        >>> rter(["aa", "bb", "cc"]).max_by(lambda a, b: len(a) >= len(b))
+        'cc'
+        """
+        best = None
+        first = True
+        for item in self.iterator:
+            if first or f(item, best):
+                best = item
+                first = False
+        return best
 
     def max_by_key(self, func: Callable[[T], Any]):
         """
         [Consume]
 
         Returning the maximum element by mapping the key using the given function.
+
+        If several elements are equally maximum, the first one is returned
+        (unlike Rust's `max_by_key`, which returns the last).
 
         >>> rter(["aaa", "ccc", "bbbbb"]).max_by_key(len)
         'bbbbb'
@@ -728,13 +825,36 @@ class IterableWrapper(Generic[T]):
         """
         return min(self.iterator, default=None)  # type: ignore
 
-    # def min_by(self, f):
+    def min_by(self, f: Callable[[T, T], bool]):
+        """
+        [Consume]
+
+        Returns the element that gives the minimum value with respect to the specified comparison.
+
+        `f(a, b)` returns True when `a` compares less than or equal to `b`.
+        If several elements are equally minimum, the last one is returned, matching Rust.
+
+        >>> rter([3, 1, 2, 1]).min_by(lambda a, b: a <= b)
+        1
+        >>> rter(["aa", "b", "c"]).min_by(lambda a, b: len(a) <= len(b))
+        'c'
+        """
+        best = None
+        first = True
+        for item in self.iterator:
+            if first or f(item, best):
+                best = item
+                first = False
+        return best
 
     def min_by_key(self, func: Callable[[T], Any]):
         """
         [Consume]
 
         Returning the minimum element by mapping the key using the given function.
+
+        If several elements are equally minimum, the first one is returned
+        (unlike Rust's `min_by_key`, which returns the last).
 
         >>> rter(["aaa", "ccc", "bbbbb"]).min_by_key(len)
         'aaa'
@@ -772,7 +892,30 @@ class IterableWrapper(Generic[T]):
         """
         return next(self.iterator, None)
 
-    # def next_chunk(self):
+    def next_chunk(self, n: int) -> List[T]:
+        """
+        [Mut ; retains = the rest elements after the chunk]
+
+        Returns the next n elements of the iterator as a list.
+
+        Fewer than n elements are returned if the iterator runs out first.
+        Raises ValueError if n is less than 1.
+
+        >>> a = rter(range(6))
+        >>> a.next_chunk(2)
+        [0, 1]
+        >>> a.next_chunk(2)
+        [2, 3]
+        >>> a.next_chunk(10)
+        [4, 5]
+        >>> rter([1]).next_chunk(0)
+        Traceback (most recent call last):
+            ...
+        ValueError: n must be at least 1
+        """
+        if n < 1:
+            raise ValueError("n must be at least 1")
+        return list(islice(self.iterator, n))
 
     def nth(self, n: int) -> Optional[T]:
         """
@@ -803,8 +946,70 @@ class IterableWrapper(Generic[T]):
         """
         return IterableWrapper(iter([x]))
 
-    # def partial_cmp(self, other):
-    # def partial_cmp_by(self, other, f):
+    def partial_cmp(self, other):
+        """
+        [UnMut]
+
+        Lexicographically compares the elements of two iterators, allowing for incomparable elements.
+
+        Returns -1, 0 or 1 as this iterator is less than, equal to, or greater than `other`;
+        returns None when a pair of elements is incomparable (neither `a == b`, `a < b`
+        nor `a > b` holds). A length mismatch is decided by the common prefix.
+
+        >>> rter([1, 2]).partial_cmp(rter([1, 3]))
+        -1
+        >>> rter([1, 2]).partial_cmp(rter([1, 2]))
+        0
+        >>> print(rter([1.0, float("nan")]).partial_cmp(rter([1.0, 2.0])))
+        None
+        """
+        y = other if isinstance(other, IterableWrapper) else IterableWrapper(other)
+        x, y = self.clone(), y.clone()
+        exhausted = object()
+        while True:
+            a = next(x, exhausted)
+            b = next(y, exhausted)
+            if a is exhausted or b is exhausted:
+                return (b is exhausted) - (a is exhausted)
+            if a == b:
+                continue
+            if a < b:
+                return -1
+            if a > b:
+                return 1
+            return None
+
+    def partial_cmp_by(self, other, func: Callable[[T, T], Optional[int]]):
+        """
+        [UnMut]
+
+        Lexicographically compares the elements of two iterators with the given partial comparator.
+
+        `func(a, b)` returns -1, 0 or 1 to order the pair, or None if the pair is
+        incomparable; an incomparable pair makes the whole comparison return None.
+
+        >>> rter([1, 2]).partial_cmp_by(rter([1, 3]), lambda a, b: (a > b) - (a < b))
+        -1
+        >>> def mixed(a, b):
+        ...     if isinstance(a, str) != isinstance(b, str):
+        ...         return None
+        ...     return (a > b) - (a < b)
+        >>> print(rter([1, 2]).partial_cmp_by(rter([1, "x"]), mixed))
+        None
+        """
+        y = other if isinstance(other, IterableWrapper) else IterableWrapper(other)
+        x, y = self.clone(), y.clone()
+        exhausted = object()
+        while True:
+            a = next(x, exhausted)
+            b = next(y, exhausted)
+            if a is exhausted or b is exhausted:
+                return (b is exhausted) - (a is exhausted)
+            ordering = func(a, b)
+            if ordering is None:
+                return None
+            if ordering != 0:
+                return ordering
 
     def partition(self, predicate: Callable[[T], bool]):
         """
@@ -1002,7 +1207,26 @@ class IterableWrapper(Generic[T]):
                 yield value
 
         return IterableWrapper(inner())
-    # def size_hint(self):
+    def size_hint(self) -> int:
+        """
+        [UnMut]
+
+        Returns a lower bound of the remaining length of the iterator (operator.length_hint).
+
+        The hint is exact whenever the underlying iterator exposes its remaining
+        length; otherwise 0 is returned.
+
+        >>> a = rter([1, 2, 3])
+        >>> a.size_hint()
+        3
+        >>> a.next()
+        1
+        >>> a.size_hint()
+        2
+        >>> rter(map(abs, [1, 2, 3])).size_hint()
+        0
+        """
+        return length_hint(self.iterator)
 
     def skip(self, n):
         """
