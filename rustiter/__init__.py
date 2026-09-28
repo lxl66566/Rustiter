@@ -868,9 +868,10 @@ class IterableWrapper(Generic[T]):
         1
         >>> rter([1, 2, 3]).rposition(lambda x: x % 5 == 0)
         """
-        for i, item in self.rev().enumerate():
-            if predicate(item):
-                return self.count()
+        items = list(self.iterator)
+        for i in range(len(items) - 1, -1, -1):
+            if predicate(items[i]):
+                return i
 
     @staticmethod
     def repeat(x, times=None):
