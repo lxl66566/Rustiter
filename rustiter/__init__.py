@@ -110,7 +110,13 @@ class IterableWrapper(Generic[T]):
         """
         [UnMut]
 
-        returns the *shallow copy* of the iterator
+        Returns a *shallow copy* of the iterator (via `itertools.tee`); the original and the copy draw from the same source. Copies the iterator object, not the elements (see README "Differences from Rust").
+
+        >>> a = rter([1, 2, 3])
+        >>> a.clone().collect()
+        [1, 2, 3]
+        >>> a.collect()
+        [1, 2, 3]
         """
         self.iterator, tmp = itertools.tee(self.iterator)
         return IterableWrapper(tmp)
@@ -119,7 +125,15 @@ class IterableWrapper(Generic[T]):
         """
         [UnMut]
 
-        returns the *deepcopy* (copy.deepcopy) of the iterator
+        Returns a *deepcopy* (copy.deepcopy) of the iterator, duplicating its current state. This differs from Rust's `cloned`, which clones each element; see README "Differences from Rust".
+
+        deepcopy relies on pickling the internal iterator: it works for C-implemented iterators (list_iterator / map / filter / enumerate, ...) but raises TypeError for generator chains.
+
+        >>> a = rter([1, 2, 3])
+        >>> a.cloned().collect()
+        [1, 2, 3]
+        >>> a.collect()
+        [1, 2, 3]
         """
         return IterableWrapper(deepcopy(self.iterator))
 
@@ -144,7 +158,10 @@ class IterableWrapper(Generic[T]):
         """
         [UnMut]
 
-        alias of `clone`
+        Alias of `clone`; like it, this copies the iterator object (tee), not each element, unlike Rust's `copied`.
+
+        >>> rter([1, 2]).copy().collect()
+        [1, 2]
         """
         return self.clone()
 
@@ -174,7 +191,10 @@ class IterableWrapper(Generic[T]):
         """
         [UnMut]
 
-        alias of `cloned`
+        Alias of `cloned`; see `cloned` for the divergence from Rust and the generator-chain limitation.
+
+        >>> rter([1, 2]).deepcopy().collect()
+        [1, 2]
         """
         return self.cloned()
 

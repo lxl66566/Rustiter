@@ -43,6 +43,17 @@ The mutability of Python's iterator is not ideal. Therefore, I marked the mutabi
 - `[UnMut]`: The iterator will not be modified.
 - `[Consume]`: The iterator may be consumed after this operation. Note that this **does not** mean the iterator will become empty; there may still be elements in it. This means that you should not use this iterator again.
 
+### Differences from Rust
+
+`cloned` / `copied` in this library operate on the **iterator object itself**, not on each element:
+
+- `clone` / `copy` return a tee-based shallow copy of the iterator.
+- `cloned` / `deepcopy` return `copy.deepcopy` of the iterator, duplicating its current state.
+
+Rust's `Iterator::cloned` / `Iterator::copied` instead clone/copy **each element** (turning an iterator of references into an iterator of values); there is no per-element copy in this library's methods of the same name.
+
+Because `cloned` / `deepcopy` rely on `copy.deepcopy`, they only work when the internal iterator supports it: C-implemented iterators (`list_iterator`, `map`, `filter`, `enumerate`, ...) are fine, but generator-based iterators (e.g. `rter(x for x in [1, 2])` and chains built on them) raise `TypeError: cannot pickle 'generator' object`.
+
 ## benchmark
 
 Windows 11, python 3.12.7
