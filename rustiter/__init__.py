@@ -226,8 +226,17 @@ class IterableWrapper(Generic[T]):
         [4, 8]
         >>> rter("hello").filter_map(lambda x: x.upper() if x in 'aeiou' else None).collect()
         ['E', 'O']
+        >>> rter([1, 0, 2, "", [], False, None]).filter_map(lambda x: None if x is None else x).collect()
+        [1, 0, 2, '', [], False]
         """
-        return IterableWrapper(filter(None, map(func, self.iterator)))
+
+        def inner():
+            for x in self.iterator:
+                r = func(x)
+                if r is not None:
+                    yield r
+
+        return IterableWrapper(inner())
 
     def find(self, predicate):
         """
@@ -257,6 +266,8 @@ class IterableWrapper(Generic[T]):
         >>> rter("hello").find_map(lambda x: x.upper() if x in 'aeiou' else None)
         'E'
         >>> rter([1, 2, 3]).find_map(lambda x: None)
+        >>> rter([0, 5]).find_map(lambda x: x)
+        0
         """
         return next(self.filter_map(func), None)
 
