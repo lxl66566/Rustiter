@@ -40,6 +40,8 @@ class IterableWrapper(Generic[T]):
         or an int with value k if StopIteration is raised, where k is remaining number of
         steps that could not be advanced because the iterator ran out.
 
+        Negative n raises ValueError (Rust panics; this library uses the explicit ValueError policy shared with step_by).
+
         >>> a = rter([1, 2, 3, 4])
         >>> a.advance_by(2)
         >>> a.next()
@@ -47,7 +49,13 @@ class IterableWrapper(Generic[T]):
         >>> a.advance_by(0)
         >>> a.advance_by(100)
         99
+        >>> rter([1, 2]).advance_by(-1)
+        Traceback (most recent call last):
+            ...
+        ValueError: advance_by() requires n >= 0
         """
+        if n < 0:
+            raise ValueError("advance_by() requires n >= 0")
         try:
             while n > 0:
                 _ = next(self.iterator)
@@ -750,10 +758,16 @@ class IterableWrapper(Generic[T]):
 
         Returns the nth element of the iterable.
 
+        Negative n raises ValueError (Rust panics).
+
         >>> rter([1, 2, 3, 4]).nth(2)
         3
         >>> rter("hello").nth(1)
         'e'
+        >>> rter([1, 2]).nth(-1)
+        Traceback (most recent call last):
+            ...
+        ValueError: Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.
         """
         return next(islice(self.iterator, n, n + 1), None)
 
@@ -969,10 +983,16 @@ class IterableWrapper(Generic[T]):
 
         Returns a new iterable containing every `step`-th element of the original iterable.
 
+        step < 1 raises ValueError (Rust panics on step == 0).
+
         >>> rter([1, 2, 3, 4, 5, 6]).step_by(2).collect()
         [1, 3, 5]
         >>> rter("hello").step_by(3).collect()
         ['h', 'l']
+        >>> rter([1, 2]).step_by(0)
+        Traceback (most recent call last):
+            ...
+        ValueError: Step for islice() must be a positive integer or None.
         """
         return IterableWrapper(islice(self.iterator, 0, None, step))
 
