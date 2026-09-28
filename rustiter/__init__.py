@@ -1,4 +1,5 @@
 import itertools
+import math
 from copy import deepcopy
 from functools import reduce
 from itertools import islice
@@ -16,6 +17,9 @@ from typing import (
 
 T = TypeVar("T")
 U = TypeVar("U")
+
+# Module-level sentinel distinguishing "argument not given" from an explicit None.
+_SENTINEL = object()
 
 
 class IterableWrapper(Generic[T]):
@@ -303,7 +307,7 @@ class IterableWrapper(Generic[T]):
             )
         )
 
-    def fold(self, func, initial=None):
+    def fold(self, func, initial=_SENTINEL):
         """
         alias of `reduce`
         """
@@ -800,10 +804,16 @@ class IterableWrapper(Generic[T]):
 
         >>> rter([1, 2, 3]).product()
         6
+        >>> rter([2, 3]).product(2)
+        12
+        >>> rter([]).product()
+        1
         """
-        return self.reduce(lambda x, y: x * y, initial)  # type: ignore
+        if initial is None:
+            return math.prod(self.iterator)
+        return math.prod(self.iterator, start=initial)
 
-    def reduce(self, func: Callable[[T, T], T], initial=None):
+    def reduce(self, func: Callable[[T, T], T], initial: Any = _SENTINEL):
         """
         [Consume]
 
@@ -819,10 +829,19 @@ class IterableWrapper(Generic[T]):
         1000
         >>> rter([]).reduce(lambda x, y: x + y, 994)
         994
+        >>> rter([]).reduce(lambda x, y: x + y) is None
+        True
         """
-        if initial is None:
-            return reduce(func, self.iterator)
-        return reduce(func, self.iterator, initial)
+        if initial is not _SENTINEL:
+            return reduce(func, self.iterator, initial)
+        for first in self.iterator:
+            acc = first
+            break
+        else:
+            return None
+        for item in self.iterator:
+            acc = func(acc, item)
+        return acc
 
     def rev(self):
         """
@@ -934,9 +953,10 @@ class IterableWrapper(Generic[T]):
 
         >>> rter([1, 2, 3]).sum()
         6
+        >>> rter([]).sum()
+        0
         """
-
-        return self.reduce(lambda x, y: x + y)  # type: ignore
+        return sum(self.iterator)
 
     def take(self, n: int):
         """
