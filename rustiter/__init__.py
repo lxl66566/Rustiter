@@ -1110,11 +1110,125 @@ class IterableWrapper(Generic[T]):
         """
         return IterableWrapper(itertools.takewhile(predicate, self.iterator))
 
-    # def try_collect():
-    # def try_find():
-    # def try_fold():
-    # def try_for_each():
-    # def try_reduce():
+    def try_collect(self, container: Union[Callable[[Iterable[Any]], Any], type] = list, catch: type = Exception):
+        """
+        [Mut]
+
+        A variant of collect that stops and returns the raised exception instead of propagating it.
+
+        If consuming the iterator raises an exception matching `catch`, iteration stops
+        immediately and the exception instance is returned; otherwise the collected
+        container is returned.
+
+        >>> rter([1, 2, 3]).try_collect()
+        [1, 2, 3]
+        >>> rter([1, 2, 3]).try_collect(set)
+        {1, 2, 3}
+        >>> def failing():
+        ...     yield 1
+        ...     raise ValueError("boom")
+        >>> err = rter(failing()).try_collect(catch=ValueError)
+        >>> isinstance(err, ValueError)
+        True
+        """
+        try:
+            return container(self.iterator)
+        except catch as e:
+            return e
+
+    def try_find(self, predicate: Callable[[T], bool], catch: type = Exception):
+        """
+        [Mut ; retains = the rest elements after the found one or the raised error]
+
+        A variant of find that stops and returns the raised exception instead of propagating it.
+
+        If `predicate` raises an exception matching `catch`, iteration stops immediately
+        and the exception instance is returned; otherwise the first matching element
+        (or None) is returned.
+
+        >>> rter([1, 2, 3]).try_find(lambda x: x > 1)
+        2
+        >>> rter([1, 2, 3]).try_find(lambda x: x > 5)
+        >>> err = rter([1, "a", 2]).try_find(lambda x: x > 1)
+        >>> isinstance(err, TypeError)
+        True
+        """
+        for item in self.iterator:
+            try:
+                if predicate(item):
+                    return item
+            except catch as e:
+                return e
+
+    def try_fold(self, initial: S, func: Callable[[S, T], S], catch: type = Exception):
+        """
+        [Mut]
+
+        A variant of fold that stops and returns the raised exception instead of propagating it.
+
+        If `func` raises an exception matching `catch`, iteration stops immediately and
+        the exception instance is returned; otherwise the folded value is returned.
+
+        >>> rter([1, 2, 3]).try_fold(0, lambda acc, x: acc + x)
+        6
+        >>> err = rter([1, 0, 2]).try_fold(0, lambda acc, x: acc + 10 // x)
+        >>> isinstance(err, ZeroDivisionError)
+        True
+        """
+        acc = initial
+        for item in self.iterator:
+            try:
+                acc = func(acc, item)
+            except catch as e:
+                return e
+        return acc
+
+    def try_for_each(self, func: Callable[[T], Any], catch: type = Exception):
+        """
+        [Mut]
+
+        A variant of for_each that stops and returns the raised exception instead of propagating it.
+
+        >>> rter([1, 2]).try_for_each(print)
+        1
+        2
+        >>> err = rter(["1", "x", "2"]).try_for_each(int, catch=ValueError)
+        >>> isinstance(err, ValueError)
+        True
+        """
+        for item in self.iterator:
+            try:
+                func(item)
+            except catch as e:
+                return e
+
+    def try_reduce(self, func: Callable[[T, T], T], catch: type = Exception):
+        """
+        [Mut]
+
+        A variant of reduce that stops and returns the raised exception instead of propagating it.
+
+        Returns None if the iterator is empty.
+
+        >>> rter([1, 2, 3]).try_reduce(lambda a, b: a + b)
+        6
+        >>> rter([]).try_reduce(lambda a, b: a + b)
+        >>> err = rter([1, 0, 2]).try_reduce(lambda a, b: a + 10 // b)
+        >>> isinstance(err, ZeroDivisionError)
+        True
+        """
+        acc = None
+        first = True
+        for item in self.iterator:
+            try:
+                if first:
+                    acc = item
+                    first = False
+                else:
+                    acc = func(acc, item)
+            except catch as e:
+                return e
+        return acc
 
     def unzip(self):
         """
