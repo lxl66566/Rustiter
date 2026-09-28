@@ -1,6 +1,12 @@
 from rustiter import rter
 
 
+def test_advance_by_mut():
+    a = rter([1, 2, 3])
+    _ = a.advance_by(1)
+    assert a.eq(rter([2, 3]))
+
+
 def test_all_mut():
     a = rter([1, 2, 3])
     _ = a.all(lambda x: x > 2)
@@ -61,9 +67,27 @@ def test_is_partitioned_unmut():
     assert a.is_empty()
 
 
+def test_last_consume():
+    a = rter([1, 2, 3])
+    _ = a.last()
+    assert a.is_empty()
+
+
 def test_map_consume():
     a = rter([1, 2, 3, 4])
     _ = a.map(lambda x: x * 2).collect()
+    assert a.is_empty()
+
+
+def test_map_while_consume():
+    a = rter([1, 2, 3])
+    _ = a.map_while(lambda x: x).collect()
+    assert a.is_empty()
+
+
+def test_map_windows_consume():
+    a = rter([1, 2, 3])
+    _ = a.map_windows(2, lambda w: sum(w)).collect()
     assert a.is_empty()
 
 
@@ -85,9 +109,21 @@ def test_position_mut():
     assert a.eq(rter([2, 3]))
 
 
+def test_rposition_consume():
+    a = rter([1, 2, 3, 4])
+    _ = a.rposition(lambda x: x == 2)
+    assert a.is_empty()
+
+
 def test_sorted_consume():
     a = rter([1, 3, 2])
     _ = a.sorted().collect()
+    assert a.is_empty()
+
+
+def test_sorted_with_key_consume():
+    a = rter([3, 1, 2])
+    _ = a.sorted(key=lambda x: -x).collect()
     assert a.is_empty()
 
 
@@ -107,6 +143,18 @@ def test_take_mut():
     a = rter([1, 2, 3, 4])
     _ = a.take(2).collect()
     assert a.eq(rter([3, 4]))
+
+
+def test_unzip_consume():
+    a = rter([(1, "a"), (2, "b")])
+    _ = a.unzip()
+    assert a.is_empty()
+
+
+def test_zip_consume():
+    a = rter([1, 2, 3])
+    _ = a.zip(rter([4, 5, 6])).collect()
+    assert a.is_empty()
 
 
 def test_compares_unmut():
