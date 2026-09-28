@@ -1,5 +1,6 @@
 import itertools
 import math
+from collections import deque
 from copy import deepcopy
 from functools import reduce
 from itertools import islice
@@ -540,16 +541,7 @@ class IterableWrapper(Generic[T]):
         3
         >>> rter([]).last()
         """
-        try:
-            return next(reversed(self.iterator), None)  # type: ignore
-        except:  # noqa: E722
-            last = None
-            try:
-                for item in self.iterator:
-                    last = item
-            except StopIteration:
-                pass
-            return last
+        return next(iter(deque(self.iterator, maxlen=1)), None)
 
     def le(self, other) -> bool:
         """
